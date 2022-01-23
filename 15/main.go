@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -32,12 +33,24 @@ func (ng NodeGrid) findAllUnvisited() NodeArr {
 
 	for _, i := range ng {
 		for _, j := range i {
-			if !j.vis {
+			if !j.vis && j.dist != math.MaxInt {
 				res = append(res, j)
 			}
 		}
 	}
 	return res
+}
+
+func (ng NodeGrid) notEmpty() bool {
+	for _, i := range ng {
+		for _, j := range i {
+			if !j.vis {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (ng NodeGrid) getLowestDistanceNode() Node {
@@ -56,6 +69,10 @@ func main() {
 	defer file.Close()
 
 	var output []string
+	f, err := os.Create("file.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -70,7 +87,7 @@ func main() {
 	for b, i := range output {
 		split := strings.Split(i, "")
 
-		arr := []Node{}
+		var arr []Node
 
 		for p, j := range split {
 			conv, _ := strconv.Atoi(j)
@@ -78,7 +95,7 @@ func main() {
 			arr = append(arr, Node{val: conv, dist: math.MaxInt, vis: false, c: Coord{i: b, j: p}})
 		}
 
-		e_arr := []Node{}
+		var e_arr []Node
 
 		for j := 0; j < 5; j++ {
 			for _, e := range arr {
@@ -112,12 +129,13 @@ func main() {
 			just_ints = append(just_ints, j.val)
 		}
 
-		fmt.Println(just_ints)
+		// f.WriteString(just_ints + "\n")
 	}
 
+	grid[0][0].val = 0
 	grid[0][0].dist = 0
 
-	for len(grid.findAllUnvisited()) != 0 {
+	for grid.notEmpty() {
 		n := grid.getLowestDistanceNode()
 		i := n.c.i
 		j := n.c.j
@@ -126,9 +144,9 @@ func main() {
 		//	fmt.Println(len(grid) - 1)
 
 		fmt.Printf("n: %v\n", n)
+		f.WriteString(fmt.Sprintf("%v", n) + "\n")
 
 		if i == len(grid)-1 && j == len(grid[i])-1 {
-			fmt.Println(n.dist + n.val)
 			break
 
 		}
@@ -160,6 +178,8 @@ func main() {
 		grid[i][j].vis = true
 
 	}
+
+	fmt.Println(grid[len(grid)-1][len(grid[0])-1].dist + grid[len(grid)-1][len(grid[0])-1].val)
 }
 
 func computeNewValue(old, increase int) int {
