@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/CaptainObi/advent-of-code/10-19/16-part2/ops"
 )
 
 func convertHex(h string) []bool {
@@ -101,22 +103,25 @@ func getValue(bb []bool) (int64, error) {
 	return strconv.ParseInt(string(str), 2, 64)
 }
 
-func getVersion(bb []bool) (int64, error) {
-	return getValue(bb[:3])
-}
+// func getVersion(bb []bool) (int64, error) {
+// 	return getValue(bb[:3])
+// }
 
 func getType(bb []bool) (int64, error) {
 	return getValue(bb[3:6])
 }
 
-func stripLiteral(bb []bool) []bool {
+// returns rest, res
+func stripLiteral(bb []bool) ([]bool, []bool) {
+	var res []bool
+	res = append(res, bb[1:5]...)
 	if bb[0] {
-		// recursive
-		return stripLiteral(
-			bb[5:],
-		)
+		bb, recur := stripLiteral(bb[5:])
+
+		return bb, append(res, recur...)
+
 	} else {
-		return bb[5:]
+		return bb[5:], res
 	}
 }
 
@@ -125,15 +130,15 @@ func stripHeader(bb []bool) []bool {
 }
 
 // stripLiteralPacket include the header
-func stripLiteralPacket(bb []bool) []bool {
-	return stripLiteral(stripHeader(bb))
-}
+// func stripLiteralPacket(bb []bool) []bool {
+// 	return stripLiteral(stripHeader(bb))
+// }
 
 // handleOperator include the header
 func handleOperator(bb []bool) ([]bool, int64, error) {
-	v, err := getVersion(bb)
-	// t, err := getType(bb)
-
+	// _, err := getVersion(bb)
+	t, err := getType(bb)
+	var values []int64
 	if err != nil {
 		return nil, 0, err
 	}
@@ -143,8 +148,6 @@ func handleOperator(bb []bool) ([]bool, int64, error) {
 	if stripped[0] {
 
 		val, err := getValue(stripped[1:12])
-
-		sum := v
 
 		if err != nil {
 			return nil, 0, err
@@ -156,20 +159,14 @@ func handleOperator(bb []bool) ([]bool, int64, error) {
 			nSum := int64(0)
 			stripped, nSum, err = handlePacket(stripped)
 
-			sum += nSum
+			values = append(values, nSum)
 		}
-
-		return stripped, sum, err
 	} else {
 		val, err := getValue(stripped[1:16])
-
-		sum := v
 
 		if err != nil {
 			return nil, 0, err
 		}
-
-		fmt.Printf("stripped: %v\n", stripped[16:])
 
 		stripped = stripped[16:]
 
@@ -179,17 +176,31 @@ func handleOperator(bb []bool) ([]bool, int64, error) {
 			nSum := int64(0)
 			stripped, nSum, err = handlePacket(stripped)
 
-			sum += nSum
+			values = append(values, nSum)
 		}
+	}
 
-		return stripped, sum, err
+	switch t {
+	case 0:
+		return stripped, ops.Sum(values), err
+	case 1:
+		return stripped, ops.Product(values), err
+	case 2:
+		return stripped, ops.Minimum(values), err
+	case 3:
+		return stripped, ops.Maximum(values), err
+	case 5:
+		return stripped, ops.GreaterThan([2]int64{values[0], values[1]}), err
+	case 6:
+		return stripped, ops.LessThan([2]int64{values[0], values[1]}), err
+	case 7:
+		return stripped, ops.Equal([2]int64{values[0], values[1]}), err
+	default:
+		return nil, 0, err
 	}
 }
 
 func handlePacket(bb []bool) ([]bool, int64, error) {
-	fmt.Println("====")
-	fmt.Println(getVersion(bb))
-
 	if t, _ := getType(bb); t == 4 {
 		return handleLiteral(bb)
 	} else {
@@ -199,8 +210,8 @@ func handlePacket(bb []bool) ([]bool, int64, error) {
 
 func handleLiteral(bb []bool) ([]bool, int64, error) {
 
-	b, e := getVersion(bb)
-	r := stripLiteral(stripHeader(bb))
-
-	return r, b, e
+	// _, e := getVersion(bb)
+	r, val := stripLiteral(stripHeader(bb))
+	res, e := getValue(val)
+	return r, res, e
 }
